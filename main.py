@@ -1,13 +1,4 @@
-"""
-Hybrid RAG System
-TreeHop-first retrieval with RQ-RAG fallback
-"""
-
-# =========================
-# Imports (fill in later)
-# =========================
-
-# from embeddings.encoder import embed_query
+from embeddings.encoder import embed_query
 # from treehop.search import TreeHopSearch
 # from routing.confidence import compute_confidence
 # from routing.triggers import needs_refinement
@@ -16,9 +7,6 @@ TreeHop-first retrieval with RQ-RAG fallback
 from utils.types import *
 import sys
 
-# =========================
-# Main Pipeline
-# =========================
 
 def run_pipeline(
     query_text: str,
@@ -87,10 +75,6 @@ def run_pipeline(
 
     return answer
 
-
-# =========================
-# CLI Entry
-# =========================
 
 if __name__ == "__main__":
     query = sys.argv[1] if len(sys.argv) > 1 else "Example question"
