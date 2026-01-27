@@ -320,7 +320,7 @@ def main():
             args.model_name_or_path,
             from_tf=bool(".ckpt" in args.model_name_or_path),
             device_map="auto",
-            dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16,
+            # dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16,
         )
 
         model.generation_config.eos_token_id = [tokenizer.convert_tokens_to_ids("</s>"),

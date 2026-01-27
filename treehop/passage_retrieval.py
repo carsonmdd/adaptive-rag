@@ -191,8 +191,10 @@ class Retriever:
         input_paths = glob.glob(self.faiss_index or self.passage_embeddings)
         embeddings_dir = os.path.dirname(input_paths[0])
         if isinstance(self.faiss_index, str) and os.path.exists(self.faiss_index):
+            print('loading old index')
             self.indexer.deserialize_from(embeddings_dir)
         elif os.path.exists(self.passage_embeddings):
+            print('loading new index')
             self.index_encoded_data(self.passage_embeddings, self.indexing_batch_size)
             if self.save_or_load_index:
                 if getattr(self.index_device, "type", self.index_device).startswith("cuda"):

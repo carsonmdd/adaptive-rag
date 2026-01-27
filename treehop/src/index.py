@@ -44,6 +44,7 @@ class Indexer(object):
             start_idx = k*index_batch_size
             end_idx = min((k+1)*index_batch_size, len(query_vectors))
             q = query_vectors[start_idx: end_idx]
+
             scores, indexes = self.index.search(q, top_docs)
             # convert to external ids
             db_ids = [[self.index_id_to_db_id[i] for i in query_top_idxs]

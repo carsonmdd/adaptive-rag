@@ -13,6 +13,31 @@ from tree_hop.model import TreeHopModel
 if DEVICE == "mps":
     DEVICE = "cpu"
 
+def pretty_print_retrieval(
+    retrieved_passage,
+    qid=0,
+    max_hops=None,
+    max_docs=5,
+    text_len=200,
+):
+    if max_hops is None:
+        max_hops = len(retrieved_passage)
+
+    for hop in range(max_hops):
+        print("=" * 80)
+        print(f"HOP {hop + 1}")
+        print("=" * 80)
+
+        hop_docs = retrieved_passage[hop][qid]
+
+        for rank, doc in enumerate(hop_docs[:max_docs], start=1):
+            text = doc["text"].replace("\n", " ")
+            text = text[:text_len] + ("..." if len(text) > text_len else "")
+
+            print(f"[{rank}] {doc['title']}  (score={doc['score']:.3f}, id={doc['id']})")
+            print(f"     {text}")
+            print()
+
 
 def model_file_name_to_params(name):
     lst_params = name.rstrip(".pt").split('__')[1].split('&')
@@ -67,7 +92,8 @@ def get_retriever(dataset_name, model):
     retriever = MultiHopRetriever(
         "BAAI/bge-m3",
         passages=f"embedding_data/{dataset_name}/eval_passages.jsonl",
-        faiss_index=f"embedding_data/{dataset_name}/index.faiss",
+        passage_embeddings=f"embedding_data/{dataset_name}/eval_content_dense.npy",
+        # faiss_index=f"embedding_data/{dataset_name}/index.faiss",
         tree_hop_model=model,
         projection_size=1024,
         save_or_load_index=True,
@@ -179,7 +205,7 @@ def parse_args():
     return args
 
 
-if __name__ == '__main__':
+def main():
     args = parse_args()
 
     model = get_evaluate_model(args.model_name_or_path, revision=args.revision)
@@ -198,6 +224,10 @@ if __name__ == '__main__':
         layerwise_top_pruning=args.layerwise_top_pruning,
         return_tree=True
     )
+
+    print('\nRETRIEVED_RESULT PASSAGE')
+    print(retrieved_result.passage)
+    print('\n')
 
     df_match = df_QA.apply(
         match_retrieve,
@@ -226,3 +256,7 @@ if __name__ == '__main__':
 
     # with open("eval_data/retrieve_tree_hop.pkl", "rb") as f:
     #     retrieved_passages = pickle.load(f)
+
+
+if __name__ == '__main__':
+    main()
