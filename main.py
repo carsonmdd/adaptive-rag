@@ -76,8 +76,38 @@ def run_pipeline(
     return answer
 
 
+def main():
+    LIST_OF_QUESTIONS = [
+        "Who is the mother of the director of film Polish-Russian War (Film)?"
+    ]
+
+    # employ networkx graph to depict multi-hop retrieval
+    retrieve_result = retriever.multihop_search_passages(
+        LIST_OF_QUESTIONS,
+        n_hop=2,
+        top_n=5,
+        index_batch_size=2048,
+        generate_batch_size=1024,
+        return_tree=True        # simply add this argument
+    )
+
+    # retrieved passages for questions
+    print(retrieve_result.passage)
+
+    # `retrieve_result.tree_hop_graph` is a list of networkx objects
+    # correspondent to the retrieval paths of the queries in LIST_OF_QUESTIONS.
+    # take the first query for example, to draw the respective path:
+    retrieval_tree = retrieve_result.tree_hop_graph[0]
+    retrieval_tree.plot_tree()
+
+    # nodes represent passages in the retrieval graph
+    # store metadata for the original passages:
+    print(retrieval_tree.nodes(data=True))
+
+
 if __name__ == "__main__":
-    query = sys.argv[1] if len(sys.argv) > 1 else "Example question"
-    result = run_pipeline(query)
-    print("\n=== FINAL ANSWER ===\n")
-    print(result)
+    # query = sys.argv[1] if len(sys.argv) > 1 else "Example question"
+    # result = run_pipeline(query)
+    # print("\n=== FINAL ANSWER ===\n")
+    # print(result)
+    main()
