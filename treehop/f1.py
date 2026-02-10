@@ -51,29 +51,51 @@ def main():
     dataset_file = "eval_data/2wiki_dev_processed_10.jsonl"
     retrieved_sets = []
     gold_sets = []
-
+    questions = []
     with jsonlines.open(dataset_file) as reader:
         for sample in reader:
             question = sample["question"]
+            questions.append(sample["question"])
             gold_sets.append(set(sf[0] for sf in sample["supporting_facts"]))
+
+    retrieve_result = retriever.multihop_search_passages(
+        questions,
+        n_hop=2,
+        top_n=5,
+        index_batch_size=2048,
+        generate_batch_size=1024,
+        redundant_pruning=True,
+        layerwise_top_pruning=True
+    )
+
+    # retrieve_result.passage is structured as: [hop_0, hop_1, ... hop_n]
+    # Each hop is a list of lists: [query_0_passages, query_1_passages, ...]
+
+    K = 10 # Set your desired K value
+    num_queries = len(retrieve_result.passage[0])
+    retrieved_sets = []
+
+    for i in range(num_queries):
+        query_titles_list = []
+        seen = set()
+        
+        # Iterate through hops (Hop 0, then Hop 1...) to maintain reasoning order
+        for hop in retrieve_result.passage:
+            passages = hop[i] 
+            for p in passages:
+                title = p['title']
+                # Only add if we haven't seen this title in a previous hop
+                if title not in seen:
+                    seen.add(title)
+                    query_titles_list.append(title)
             
-            retrieve_result = retriever.multihop_search_passages(
-                question,
-                n_hop=3,
-                top_n=20,
-                index_batch_size=10240,
-                generate_batch_size=1024,
-                # redundant_pruning=True,
-                # layerwise_top_pruning=True
-            )
-            last_hop_passages = retrieve_result.passage[-1][0]
-            retrieved_titles = {p["title"] for p in last_hop_passages}
-            retrieved_sets.append(retrieved_titles)
+            # Optional: If you want to stop as soon as you hit K 
+            # (Note: Removing this allows you to calculate different @K later from one list)
+            if len(query_titles_list) >= K: break
 
-    # print('\nRETRIEVED SETS', retrieved_sets, '\n')
-    # print('\nGOLD SETS', gold_sets, '\n')
-
-    print('\n', len(retrieved_sets), len(gold_sets))
+        # Slice the list to get only the top K and convert to set for easy comparison
+        top_k_titles = set(query_titles_list[:K])
+        retrieved_sets.append(top_k_titles)
 
     print()
     for retrieved, gold in zip(retrieved_sets, gold_sets):
@@ -83,7 +105,7 @@ def main():
 
     precision, recall, f1 = compute_prf(retrieved_sets, gold_sets)
 
-    print(f"Precision: {precision:.4f}, Recall: {recall:.4f}, F1: {f1:.4f}")
+    print(f"Precision@{K}: {precision:.4f}, Recall@{K}: {recall:.4f}, F1: {f1:.4f}")
 
 if __name__ == '__main__':
     main()
