@@ -37,10 +37,10 @@ def main():
     # load retriever
     retriever = MultiHopRetriever(
         "BAAI/bge-m3",
-        passages=f"embedding_data/{EVALUATE_DATASET}/eval_passages_10.jsonl",
+        passages=f"embedding_data/{EVALUATE_DATASET}/eval_passages_500.jsonl",
         passage_embeddings=f"embedding_data/{EVALUATE_DATASET}/eval_content_dense.npy",
         # uncomment this if faiss index is initialized, resulting in a faster loading
-        faiss_index=f"embedding_data/{EVALUATE_DATASET}/index.faiss",
+        # faiss_index=f"embedding_data/{EVALUATE_DATASET}/index.faiss",
         tree_hop_model=tree_hop_model,
         projection_size=1024,
         save_or_load_index=True,
@@ -48,7 +48,7 @@ def main():
         index_device="cuda"     # or cpu on Apple Metal
     )
 
-    dataset_file = "eval_data/2wiki_dev_processed_10.jsonl"
+    dataset_file = "eval_data/2wiki_dev_processed_500.jsonl"
     retrieved_sets = []
     gold_sets = []
     questions = []
