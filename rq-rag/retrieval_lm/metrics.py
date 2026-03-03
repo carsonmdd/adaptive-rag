@@ -4,8 +4,9 @@ import re
 from collections import Counter
 import re
 
+
 def exact_match_score(prediction, ground_truth):
-    return (normalize_answer(prediction) == normalize_answer(ground_truth))
+    return normalize_answer(prediction) == normalize_answer(ground_truth)
 
 
 def metric_max_over_ground_truths(metric_fn, prediction, ground_truths):
@@ -31,8 +32,7 @@ def f1(decoded_preds, decoded_labels):
         if type(answers) == list:
             if len(answers) == 0:
                 return 0
-            f1_all.append(np.max([qa_f1_score(prediction, gt)
-                          for gt in answers]))
+            f1_all.append(np.max([qa_f1_score(prediction, gt) for gt in answers]))
         else:
             f1_all.append(qa_f1_score(prediction, answers))
     return 100 * np.mean(f1_all)
@@ -53,23 +53,24 @@ def qa_f1_score(prediction, ground_truth):
 
 def normalize_answer(s):
     def remove_articles(text):
-        return re.sub(r'\b(a|an|the)\b', ' ', text)
+        return re.sub(r"\b(a|an|the)\b", " ", text)
 
     def white_space_fix(text):
-        return ' '.join(text.split())
+        return " ".join(text.split())
 
     def remove_punc(text):
         exclude = set(string.punctuation)
-        return ''.join(ch for ch in text if ch not in exclude)
+        return "".join(ch for ch in text if ch not in exclude)
 
     def lower(text):
         return text.lower()
+
     return white_space_fix(remove_articles(remove_punc(lower(s))))
 
 
 def find_entity_tags(sentence):
-    entity_regex = r'(.+?)(?=\s<|$)'
-    tag_regex = r'<(.+?)>'
+    entity_regex = r"(.+?)(?=\s<|$)"
+    tag_regex = r"<(.+?)>"
     entity_names = re.findall(entity_regex, sentence)
     tags = re.findall(tag_regex, sentence)
 
@@ -122,4 +123,4 @@ def calculate_retrieval_em_f1(predicted_support_idxs, gold_support_idxs):
     # Without this change, em gets 1 and f1 gets 0
     if not cur_sp_pred and not gold_sp_pred:
         f1, em = 1.0, 1.0
-    return f1, em
+    return prec, recall, f1, em

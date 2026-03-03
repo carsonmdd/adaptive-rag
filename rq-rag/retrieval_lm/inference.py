@@ -484,10 +484,15 @@ def main():
                 # for retrieve from candidates setting, we can calc retrieval performance
                 for path in meta_results[0]:
                     predicted_support_idxs = path["retrieved_index"]
-                    cur_f1, cur_em = calculate_retrieval_em_f1(
+                    cur_prec, cur_recall, cur_f1, cur_em = calculate_retrieval_em_f1(
                         predicted_support_idxs, gold_support_idxs
                     )
-                    path["retrieval_performance"] = [cur_f1, cur_em]
+                    path["retrieval_performance"] = [
+                        cur_prec,
+                        cur_recall,
+                        cur_f1,
+                        cur_em,
+                    ]
 
         if "arc" in args.task or "openbookqa" in args.task:
             label_dict = {
