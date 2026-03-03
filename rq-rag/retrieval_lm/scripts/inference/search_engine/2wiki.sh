@@ -7,11 +7,11 @@ python ./inference.py \
 --model_name_or_path \
 "zorowin123/rq_rag_llama2_7B" \
 --input_file \
-"/home/carson/research/adaptive-rag/rq-rag/data/2wiki/dev_10.json" \
+"/home/carson/research/adaptive-rag/rq-rag/data/2wiki/dev_1.json" \
 --max_new_tokens \
 100 \
 --output_path \
-"/home/carson/research/adaptive-rag/rq-rag/output/dev_10" \
+"/home/carson/research/adaptive-rag/rq-rag/output/dev_1" \
 --ndocs \
 3 \
 --use_search_engine \

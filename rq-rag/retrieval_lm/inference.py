@@ -523,8 +523,6 @@ def main():
         all_preds.extend(preds)
         all_results.extend(meta_results)
 
-        print("\n", all_results, "\n")
-
         if args.metric == "accuracy":
             metric_result = accuracy(preds, rows)
 

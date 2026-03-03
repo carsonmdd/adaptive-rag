@@ -17,19 +17,19 @@ from src.normalize_text import normalize
 #     ('musique', 'eval'), ('hotpotqa', 'train'),
 # ]
 
-lst_vectorize = [
-    ('2wiki', 'eval')
-]
+lst_vectorize = [("2wiki", "eval")]
 
 
-if __name__ == '__main__':
-    model = BGEM3FlagModel('BAAI/bge-m3', use_fp16=False, normalize_embeddings=True, device=DEVICE)
+if __name__ == "__main__":
+    model = BGEM3FlagModel(
+        "BAAI/bge-m3", use_fp16=False, normalize_embeddings=True, device=DEVICE
+    )
 
     for dataset_name, dataset_type in lst_vectorize:
         if dataset_type == "train":
-            file_path = f'./train_data/{dataset_name}_train_processed.jsonl'
+            file_path = f"./train_data/{dataset_name}_train_processed.jsonl"
         elif dataset_type == "eval":
-            file_path = f'./eval_data/{dataset_name}_dev_processed_500.jsonl'
+            file_path = f"./eval_data/{dataset_name}_dev_processed_5.jsonl"
 
         df_dataset = pd.read_json(file_path, lines=True, orient="records")
 
@@ -52,28 +52,38 @@ if __name__ == '__main__':
         lst_questions_ctxs = list(map(normalize, lst_questions_ctxs))
 
         # lst_embeddings = []
-        for i in tqdm(range(0, len(lst_questions_ctxs), 10240), desc=f"{dataset_name} {dataset_type}"):
+        for i in tqdm(
+            range(0, len(lst_questions_ctxs), 10240),
+            desc=f"{dataset_name} {dataset_type}",
+        ):
             embeddings = model.encode(
-                lst_questions_ctxs[i: i + 10240],
+                lst_questions_ctxs[i : i + 10240],
                 batch_size=8,
                 return_dense=True,
                 return_sparse=False,
-                return_colbert_vecs=False
+                return_colbert_vecs=False,
             )
             getattr(torch, DEVICE).empty_cache()
 
             np.save(
                 f"embedding_data/{dataset_name}/{dataset_type}_dense{i}.npy",
-                embeddings["dense_vecs"]
+                embeddings["dense_vecs"],
             )
             # lst_embeddings.append(embeddings)
 
         import glob
-        input_paths = glob.glob(f"embedding_data/{dataset_name}/{dataset_type}_dense[0-9]*.npy")
-        input_paths = sorted(input_paths, key=lambda path: int(path.split("_dense")[1].rstrip(".npy")))
+
+        input_paths = glob.glob(
+            f"embedding_data/{dataset_name}/{dataset_type}_dense[0-9]*.npy"
+        )
+        input_paths = sorted(
+            input_paths, key=lambda path: int(path.split("_dense")[1].rstrip(".npy"))
+        )
         lst_embeddings = []
         for path in input_paths:
-            if not path.startswith(f"embedding_data/{dataset_name}/{dataset_type}_dense") or not path.endswith(".npy"):
+            if not path.startswith(
+                f"embedding_data/{dataset_name}/{dataset_type}_dense"
+            ) or not path.endswith(".npy"):
                 continue
 
             lst_embeddings.append(np.load(path))
@@ -83,14 +93,17 @@ if __name__ == '__main__':
         os.makedirs(f"embedding_data/{dataset_name}", exist_ok=True)
 
         np.save(
-            f"embedding_data/{dataset_name}/{dataset_type}_dense.npy",
-            all_embeddings)
+            f"embedding_data/{dataset_name}/{dataset_type}_dense.npy", all_embeddings
+        )
         np.save(
             f"embedding_data/{dataset_name}/{dataset_type}_content_dense.npy",
-            all_embeddings[-len(lst_ctx):])
+            all_embeddings[-len(lst_ctx) :],
+        )
 
         for path in input_paths:
-            if path.startswith(f"embedding_data/{dataset_name}/{dataset_type}_dense") or not path.endswith(".npy"):
+            if path.startswith(
+                f"embedding_data/{dataset_name}/{dataset_type}_dense"
+            ) or not path.endswith(".npy"):
                 os.remove(path)
 
         # with open(f"embedding_data/{dataset_name}/{dataset_type}_sparse.pkl", "wb") as f:
@@ -102,11 +115,17 @@ if __name__ == '__main__':
         # save corresponding context array indices
         df_dataset.to_json(file_path, lines=True, orient="records")
 
-        d_ctx_idx = [{"id": i,
-                        "title": k.split("\nContext: ")[0].replace("Title: ", ''),
-                        "text": k.split("\nContext: ")[1]}
-                        for i, k in enumerate(d_ctxs.keys())]
+        d_ctx_idx = [
+            {
+                "id": i,
+                "title": k.split("\nContext: ")[0].replace("Title: ", ""),
+                "text": k.split("\nContext: ")[1],
+            }
+            for i, k in enumerate(d_ctxs.keys())
+        ]
 
-        dataset_path = os.path.join("embedding_data", dataset_name, f"{dataset_type}_passages_500.jsonl")
+        dataset_path = os.path.join(
+            "embedding_data", dataset_name, f"{dataset_type}_passages_5.jsonl"
+        )
         with jsonlines.open(dataset_path, "w") as f:
             f.write_all(d_ctx_idx)
