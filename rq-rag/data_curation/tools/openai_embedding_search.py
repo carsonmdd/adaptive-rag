@@ -5,10 +5,12 @@ from openai import OpenAI
 import torch
 import numpy as np
 import sys
+
 sys.path.append("../..")
 import retrieval_lm.src.normalize_text as normalize_text
 
 load_dotenv()
+
 
 class OpenAIEmbedSearch:
     def __init__(self, ndocs, task, args, use_calculated_embeds=True, is_train=False):
@@ -22,12 +24,16 @@ class OpenAIEmbedSearch:
 
             if is_train:
 
-                embeddings_path = os.path.join(os.path.dirname(self.args.input_file), "train_context_embeddings.pt")
+                embeddings_path = os.path.join(
+                    os.path.dirname(self.args.input_file), "train_context_embeddings.pt"
+                )
                 self.all_embeddings = torch.load(embeddings_path)
 
             else:
 
-                embeddings_path = os.path.join(os.path.dirname(self.args.input_file), "test_context_embeddings.pt")
+                embeddings_path = os.path.join(
+                    os.path.dirname(self.args.input_file), "test_context_embeddings.pt"
+                )
                 self.all_embeddings = torch.load(embeddings_path)
 
     def __call__(self, query: str, corpus: list, index: int = None):
@@ -38,11 +44,23 @@ class OpenAIEmbedSearch:
         normalized_query = normalize_text.normalize(normalized_query)
 
         try:
-            normalized_query_emb = self.client.embeddings.create(input=[normalized_query], model="text-embedding-3-large").data[0].embedding
+            normalized_query_emb = (
+                self.client.embeddings.create(
+                    input=[normalized_query], model="text-embedding-3-large"
+                )
+                .data[0]
+                .embedding
+            )
 
         except Exception as E:
             print(f"bad request for openai, use dummy input : {E}")
-            normalized_query_emb = self.client.embeddings.create(input=["dummy"], model="text-embedding-3-large").data[0].embedding
+            normalized_query_emb = (
+                self.client.embeddings.create(
+                    input=["dummy"], model="text-embedding-3-large"
+                )
+                .data[0]
+                .embedding
+            )
 
         normalized_query_emb = torch.tensor(normalized_query_emb)
 
@@ -50,23 +68,36 @@ class OpenAIEmbedSearch:
 
         evidences = []
         for top_index in top_indices:
-            if "title" in corpus[top_index]:
-                evidences.append({
-                    "title": corpus[top_index]["title"],
-                    "text": corpus[top_index]["paragraph_text"]
-                })
-            elif "text" in corpus[top_index]:
-                evidences.append({
-                    "title": "Retrieved Documents for Reference",
-                    "text": corpus[top_index]["text"].split("*****")[-1]
-                })
+            doc = corpus[top_index]
+
+            # 2Wiki Format: ["Title", ["Sentence 1", "Sentence 2", ...]]
+            if isinstance(doc, list) and len(doc) >= 2:
+                title = doc[0]
+                sentences = doc[1]
+                text = " ".join(sentences) if isinstance(sentences, list) else sentences
+                evidences.append({"title": title, "text": text})
+            elif isinstance(doc, dict):
+                if "title" in doc:
+                    evidences.append(
+                        {
+                            "title": doc["title"],
+                            "text": doc["paragraph_text"],
+                        }
+                    )
+                elif "text" in doc:
+                    evidences.append(
+                        {
+                            "title": "Retrieved Documents for Reference",
+                            "text": doc["text"].split("*****")[-1],
+                        }
+                    )
 
         if len(evidences) == 0:
             # do not return anything from search engine, add dummy
-            evidences.append({
-                "title": "dummy",
-                "text": "the search engine did not return anything"
-            })
+            print("\n", "HERE", "\n")
+            evidences.append(
+                {"title": "dummy", "text": "the search engine did not return anything"}
+            )
 
         return evidences, top_indices
 
@@ -93,9 +124,13 @@ class OpenAIEmbedSearch:
         else:
             cur_context_embeddings = self.all_embeddings
 
-        similarities = [self.cosine_similarity(query_embedding, context_embedding) for context_embedding in
-                        cur_context_embeddings]
+        similarities = [
+            self.cosine_similarity(query_embedding, context_embedding)
+            for context_embedding in cur_context_embeddings
+        ]
 
-        most_similar_index = sorted(range(len(similarities)), key=lambda i: similarities[i], reverse=True)[:self.ndocs]
+        most_similar_index = sorted(
+            range(len(similarities)), key=lambda i: similarities[i], reverse=True
+        )[: self.ndocs]
 
         return most_similar_index
