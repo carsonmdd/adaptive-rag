@@ -1,4 +1,5 @@
 import os
+
 os.environ["DGLBACKEND"] = "pytorch"
 import argparse
 from collections import namedtuple
@@ -15,24 +16,21 @@ from info_nce import info_nce
 from src.utils import DEVICE
 from utils import NodeType
 from tree_hop import TreeHopModel, TreeHopTrainDataset
-from evaluation import evaluate_dataset
+from scripts.evaluation import evaluate_dataset
 
 try:
-   mp.set_start_method('spawn')
-   print("Multiprocess already spawned")
+    mp.set_start_method("spawn")
+    print("Multiprocess already spawned")
 except RuntimeError:
-   pass
+    pass
 
 
-InBatch = namedtuple(
-    "Graph_Reranker_Batch",
-    ["graph", "prop"]
-)
+InBatch = namedtuple("Graph_Reranker_Batch", ["graph", "prop"])
 
 
 def seed_env(seed: int):
     random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     if DEVICE != "cpu":
@@ -45,10 +43,7 @@ def seed_worker(worker_id):
 
 
 def gather_graph_contrastive_losses(
-    g: dgl.DGLGraph,
-    num_negatives,
-    negative_mode="paired",
-    temperature=0.1
+    g: dgl.DGLGraph, num_negatives, negative_mode="paired", temperature=0.1
 ):
     y = g.ndata["y"]
     b_positives = (y == NodeType.relevant_doc.value) | (y == NodeType.leaf.value)
@@ -66,10 +61,14 @@ def gather_graph_contrastive_losses(
         if negatives.shape[1] < num_negatives:
             raise LookupError("number of negatives less than specified")
 
-        idx_picked_negs = torch.randint(negatives.shape[1], (num_negatives,), device=g.device)
+        idx_picked_negs = torch.randint(
+            negatives.shape[1], (num_negatives,), device=g.device
+        )
         negatives = negatives[:, idx_picked_negs, :]
     elif negative_mode == "unpaired":
-        idx_picked_negs = torch.randint(negatives.shape[0], (num_negatives,), device=g.device)
+        idx_picked_negs = torch.randint(
+            negatives.shape[0], (num_negatives,), device=g.device
+        )
         negatives = negatives[idx_picked_negs, :]
     else:
         raise NotImplementedError()
@@ -114,25 +113,18 @@ def gather_graph_contrastive_losses(
         positive_key=positives,
         negative_keys=negatives,
         negative_mode=negative_mode,
-        temperature=temperature
+        temperature=temperature,
     )
     return loss
 
 
 def collate_batch(batch):
     batch_graph, batch_props = zip(*batch)
-    return InBatch(
-        graph=dgl.batch(batch_graph).to(DEVICE),
-        prop=batch_props
-    )
+    return InBatch(graph=dgl.batch(batch_graph).to(DEVICE), prop=batch_props)
 
 
 def evaluate_retrieve(
-    model,
-    n_hop,
-    top_n,
-    index_batch_size=10240,
-    generate_batch_size=512
+    model, n_hop, top_n, index_batch_size=10240, generate_batch_size=512
 ):
     datasets = ["2wiki", "musique", "multihop_rag"]
     d_stats = {}
@@ -143,7 +135,7 @@ def evaluate_retrieve(
             n_hop,
             top_n,
             index_batch_size=index_batch_size,
-            generate_batch_size=generate_batch_size
+            generate_batch_size=generate_batch_size,
         )
         d_stats[dataset_name] = stat
 
@@ -154,72 +146,56 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Train TreeHop")
 
     parser.add_argument(
-        "--graph_cache_dir", type=str, default=None,
-        help="Load dgl graph cache and respective dataset"
+        "--graph_cache_dir",
+        type=str,
+        default=None,
+        help="Load dgl graph cache and respective dataset",
     )
     parser.add_argument(
-        "--state_dict", type=str, default=None,
-        help="Resume with saved parameters"
+        "--state_dict", type=str, default=None, help="Resume with saved parameters"
     )
     parser.add_argument(
-        "--n_neg", type=int, default=5,
-        help="Number of negatives for each positive sample for contrastive learning"
+        "--n_neg",
+        type=int,
+        default=5,
+        help="Number of negatives for each positive sample for contrastive learning",
     )
     parser.add_argument(
-        "--neg_mode", type=str, default="paired",
-        choices=['paired', 'unpaired'],
-        help="Type of negatives w.r.t query for Info NCE loss"
+        "--neg_mode",
+        type=str,
+        default="paired",
+        choices=["paired", "unpaired"],
+        help="Type of negatives w.r.t query for Info NCE loss",
+    )
+    parser.add_argument("--g_size", type=int, default=2048, help="Gate size")
+    parser.add_argument("--mlp_size", type=int, default=2048, help="MLP layer size")
+    parser.add_argument(
+        "--n_mlp", type=int, default=3, help="Number of sequential MLP layers"
     )
     parser.add_argument(
-        "--g_size", type=int, default=2048,
-        help="Gate size"
+        "--n_head", type=int, default=1, help="Number of stacked node modules"
+    )
+    parser.add_argument("--dropout", type=float, default=0.1, help="Dropout rate")
+    parser.add_argument(
+        "--epoch", type=int, default=20, help="Number of training epoch"
     )
     parser.add_argument(
-        "--mlp_size", type=int, default=2048,
-        help="MLP layer size"
+        "--batch_size", type=int, default=64, help="Number of training batch size"
+    )
+    parser.add_argument("--lr", type=float, default=6e-5, help="Training learning rate")
+    parser.add_argument(
+        "--temperature", type=float, default=0.15, help="InfoNCE temperature"
     )
     parser.add_argument(
-        "--n_mlp", type=int, default=3,
-        help="Number of sequential MLP layers"
+        "--weight_decay", type=float, default=2e-8, help="Training weight decay"
     )
-    parser.add_argument(
-        "--n_head", type=int, default=1,
-        help="Number of stacked node modules"
-    )
-    parser.add_argument(
-        "--dropout", type=float, default=0.1,
-        help="Dropout rate"
-    )
-    parser.add_argument(
-        "--epoch", type=int, default=20,
-        help="Number of training epoch"
-    )
-    parser.add_argument(
-        "--batch_size", type=int, default=64,
-        help="Number of training batch size"
-    )
-    parser.add_argument(
-        "--lr", type=float, default=6e-5,
-        help="Training learning rate"
-    )
-    parser.add_argument(
-        "--temperature", type=float, default=0.15,
-        help="InfoNCE temperature"
-    )
-    parser.add_argument(
-        "--weight_decay", type=float, default=2e-8,
-        help="Training weight decay"
-    )
-    parser.add_argument(
-        "--seed", type=int, default=None,
-        help="Training seed"
-    )
+    parser.add_argument("--seed", type=int, default=None, help="Training seed")
 
     args = parser.parse_args()
     return args
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # hyper parameters
     args = parse_args()
 
@@ -234,7 +210,8 @@ if __name__ == '__main__':
 
     # create datasets
     train_set = TreeHopTrainDataset(
-        "2wiki", "train",
+        "2wiki",
+        "train",
         num_negatives=args.n_neg,
         # negative_dataset="embedding_data/hotpotqa/train_dense.npy",
         graph_cache_dir=args.graph_cache_dir,
@@ -254,10 +231,12 @@ if __name__ == '__main__':
         mlp_size=args.mlp_size,
         n_mlp=args.n_mlp,
         dropout=args.dropout,
-        n_head=args.n_head
+        n_head=args.n_head,
     )
     if args.state_dict is not None:
-        pt_state_dict = torch.load(args.state_dict, weights_only=True, map_location=DEVICE)
+        pt_state_dict = torch.load(
+            args.state_dict, weights_only=True, map_location=DEVICE
+        )
         model.load_state_dict(pt_state_dict)
         print(f"Model checkpoint '{args.state_dict}' loaded")
 
@@ -273,21 +252,23 @@ if __name__ == '__main__':
     epoch_train_loss = []
     epoch_eval_loss = []
     epoch_eval_score = []
-    for epoch in (epoch_pbar:=tqdm(range(args.epoch),
-                                   desc="Epoch",
-                                   position=0,
-                                   leave=True)):
+    for epoch in (
+        epoch_pbar := tqdm(range(args.epoch), desc="Epoch", position=0, leave=True)
+    ):
         model.train()
-        for step, batch in enumerate(pbar:=tqdm(train_loader,
-                                                desc="Train step",
-                                                position=1,
-                                                leave=True,
-                                                mininterval=1.)):
+        for step, batch in enumerate(
+            pbar := tqdm(
+                train_loader, desc="Train step", position=1, leave=True, mininterval=1.0
+            )
+        ):
             g = batch.graph
             optimizer.zero_grad()
             h = model(g)
             loss = gather_graph_contrastive_losses(
-                g, negative_mode=args.neg_mode, num_negatives=args.n_neg, temperature=args.temperature
+                g,
+                negative_mode=args.neg_mode,
+                num_negatives=args.n_neg,
+                temperature=args.temperature,
             )
             loss.backward()
             optimizer.step()
@@ -298,11 +279,14 @@ if __name__ == '__main__':
         d_stats = evaluate_retrieve(model.eval(), n_hop=2, top_n=5)
         epoch_pbar.set_postfix(d_stats)
 
-        str_eval_stats = '&'.join([f'{k}={v:.3f}' for k, v in d_stats.items()])
-        str_args = '&'.join([f'{k}={v}'
-                             for k, v in args.__dict__.items()
-                             if k not in ("epoch", "graph_cache_dir", "state_dict")
-                             and v is not None])
+        str_eval_stats = "&".join([f"{k}={v:.3f}" for k, v in d_stats.items()])
+        str_args = "&".join(
+            [
+                f"{k}={v}"
+                for k, v in args.__dict__.items()
+                if k not in ("epoch", "graph_cache_dir", "state_dict") and v is not None
+            ]
+        )
         torch.save(
             model.state_dict(),
             f"checkpoint/treehop_{str_eval_stats}__epoch={epoch}&{str_args}.pt",
