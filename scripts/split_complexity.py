@@ -1,32 +1,40 @@
 import json
 import os
 import sys
+import jsonlines
 
 
 def load_data(file_path):
     """Detects format and loads either .json or .jsonl"""
-    with open(file_path, "r", encoding="utf-8") as f:
-        if file_path.endswith(".jsonl"):
-            return [json.loads(line) for line in f]
-        else:
+    if file_path.endswith(".jsonl"):
+        with jsonlines.open(file_path) as reader:
+            return list(reader)
+    else:
+        with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
 
 def save_data(data, file_path):
-    """Saves data as .json with pretty printing"""
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4)
+    """Saves data as .jsonl or .json based on extension"""
+    if file_path.endswith(".jsonl"):
+        with jsonlines.open(file_path, mode="w") as writer:
+            writer.write_all(data)
+    else:
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
 
 
 def split_2wiki_by_complexity(base_url):
-    # Check for either dev.json or dev.jsonl
+    # Check for either dev.json or the processed jsonl
     json_path = os.path.join(base_url, "dev.json")
     jsonl_path = os.path.join(base_url, "2wiki_dev_processed.jsonl")
 
     if os.path.exists(jsonl_path):
         target_path = jsonl_path
+        ext = ".jsonl"  # Save output in the same format
     elif os.path.exists(json_path):
         target_path = json_path
+        ext = ".json"
     else:
         print(
             f"Error: Could not find dev.json or 2wiki_dev_processed.jsonl in {base_url}"
@@ -38,28 +46,30 @@ def split_2wiki_by_complexity(base_url):
     complex_data = []
 
     for item in data:
-        # Measure hop count via number of unique supporting paragraphs
-        # facts are [title, sent_idx], so we take unique titles
+        # Get unique titles to count true hops
         unique_titles = set(
             title for title, sent_idx in item.get("supporting_facts", [])
         )
         hop_count = len(unique_titles)
-        q_type = item.get("type", "")
+        q_type = item.get("type", "").lower()
 
         # Criteria: Simple (2-hop Bridge types)
-        if hop_count <= 2 and q_type in ["bridge", "inference", "compositional"]:
+        if hop_count <= 2 and q_type in ["inference", "compositional"]:
             simple_data.append(item)
 
         # Criteria: Complex (3+ hops OR Comparison types)
         elif hop_count >= 3 or q_type in ["comparison", "bridge_comparison"]:
             complex_data.append(item)
 
-    # Save outputs
-    save_data(simple_data, os.path.join(base_url, "2wiki_simple.json"))
-    save_data(complex_data, os.path.join(base_url, "2wiki_complex.json"))
+    # Save outputs using the detected extension
+    save_data(simple_data, os.path.join(base_url, f"2wiki_simple{ext}"))
+    save_data(complex_data, os.path.join(base_url, f"2wiki_complex{ext}"))
 
-    print(f"File processed: {os.path.basename(target_path)}")
-    print(f"Split complete: {len(simple_data)} simple, {len(complex_data)} complex.")
+    print(f"--- Processing Complete ---")
+    print(f"Source: {os.path.basename(target_path)}")
+    print(f"Format: {ext}")
+    print(f"Simple: {len(simple_data)}")
+    print(f"Complex: {len(complex_data)}")
 
 
 if __name__ == "__main__":
@@ -67,4 +77,4 @@ if __name__ == "__main__":
         target_dir = sys.argv[1]
         split_2wiki_by_complexity(target_dir)
     else:
-        print("No path provided")
+        print("Usage: python script.py /home/path/to/data/")
