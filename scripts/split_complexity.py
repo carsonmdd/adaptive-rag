@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import jsonlines
+import random
 
 
 def load_data(file_path):
@@ -24,7 +25,9 @@ def save_data(data, file_path):
             json.dump(data, f, indent=4)
 
 
-def split_2wiki_by_complexity(base_url):
+def split_2wiki_by_complexity(base_url, limit=None):
+    random.seed(42)
+
     # Check for either dev.json or the processed jsonl
     json_path = os.path.join(base_url, "dev.json")
     jsonl_path = os.path.join(base_url, "2wiki_dev_processed.jsonl")
@@ -42,6 +45,8 @@ def split_2wiki_by_complexity(base_url):
         return
 
     data = load_data(target_path)
+    random.shuffle(data)
+
     simple_data = []
     complex_data = []
 
@@ -61,12 +66,18 @@ def split_2wiki_by_complexity(base_url):
         elif hop_count >= 3 or q_type in ["compositional", "bridge_comparison"]:
             complex_data.append(item)
 
+    if limit:
+        simple_data = simple_data[:limit]
+        complex_data = complex_data[:limit]
+
     # Save outputs using the detected extension
-    save_data(simple_data, os.path.join(base_url, f"2wiki_simple{ext}"))
-    save_data(complex_data, os.path.join(base_url, f"2wiki_complex{ext}"))
+    limit_suffix = f"_{limit}" if limit else ""
+    save_data(simple_data, os.path.join(base_url, f"2wiki_simple{limit_suffix}{ext}"))
+    save_data(complex_data, os.path.join(base_url, f"2wiki_complex{limit_suffix}{ext}"))
 
     print(f"--- Processing Complete ---")
     print(f"Source: {os.path.basename(target_path)}")
+    print(f"Sampled with Seed 42 and Limit: {limit}")
     print(f"Format: {ext}")
     print(f"Simple: {len(simple_data)}")
     print(f"Complex: {len(complex_data)}")
@@ -75,6 +86,7 @@ def split_2wiki_by_complexity(base_url):
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         target_dir = sys.argv[1]
-        split_2wiki_by_complexity(target_dir)
+        n_limit = int(sys.argv[2]) if len(sys.argv) > 2 else None
+        split_2wiki_by_complexity(target_dir, n_limit)
     else:
-        print("Usage: python script.py /home/path/to/data/")
+        print("Usage: python script.py /home/path/to/data/ [optional_limit]")
