@@ -29,7 +29,7 @@ if __name__ == "__main__":
         if dataset_type == "train":
             file_path = f"./train_data/{dataset_name}_train_processed.jsonl"
         elif dataset_type == "eval":
-            file_path = f"./eval_data/{dataset_name}_dev_processed_5.jsonl"
+            file_path = f"./eval_data/{dataset_name}_complex_500.jsonl"
 
         df_dataset = pd.read_json(file_path, lines=True, orient="records")
 
@@ -125,7 +125,7 @@ if __name__ == "__main__":
         ]
 
         dataset_path = os.path.join(
-            "embedding_data", dataset_name, f"{dataset_type}_passages_5.jsonl"
+            "embedding_data", dataset_name, f"{dataset_type}_passages.jsonl"
         )
         with jsonlines.open(dataset_path, "w") as f:
             f.write_all(d_ctx_idx)

@@ -4,7 +4,7 @@ import numpy as np
 
 def compute_prf_metrics(retrieved_titles, gold_titles):
     """
-    Standard PRF + EM logic.
+    Standard PRF
     Includes the 'Perfect Empty' case from the RQ-RAG source.
     """
     if not retrieved_titles and not gold_titles:
@@ -17,16 +17,16 @@ def compute_prf_metrics(retrieved_titles, gold_titles):
     prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
     recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
     f1 = 2 * prec * recall / (prec + recall) if (prec + recall) > 0 else 0.0
-    em = 1.0 if (fp == 0 and fn == 0) else 0.0
+    # em = 1.0 if (fp == 0 and fn == 0) else 0.0
 
-    return prec, recall, f1, em
+    return prec, recall, f1
 
 
 def main():
-    RESULTS_PATH = "output/dev_5/final_results.json"
-    INPUT_DATA_PATH = "data/2wiki/dev_5.json"
+    RESULTS_PATH = "output/2wiki_simple_500/final_results.json"
+    INPUT_DATA_PATH = "data/2wiki/2wiki_simple_500.json"
 
-    K = 5
+    K = 2
 
     # --- LOAD DATA ---
     with open(RESULTS_PATH, "r") as f:

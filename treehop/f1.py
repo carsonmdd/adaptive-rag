@@ -1,11 +1,8 @@
 import jsonlines
-from tqdm.auto import tqdm
 
 from tree_hop import TreeHopModel
 from passage_retrieval import MultiHopRetriever
 import numpy as np
-
-import json
 
 
 def compute_prf(retrieved_sets: list[set[str]], gold_sets: list[set[str]]):
@@ -34,7 +31,7 @@ def main():
     # load retriever
     retriever = MultiHopRetriever(
         "BAAI/bge-m3",
-        passages=f"embedding_data/{EVALUATE_DATASET}/eval_passages_5.jsonl",
+        passages=f"embedding_data/{EVALUATE_DATASET}/eval_passages.jsonl",
         passage_embeddings=f"embedding_data/{EVALUATE_DATASET}/eval_content_dense.npy",
         # uncomment this if faiss index is initialized, resulting in a faster loading
         # faiss_index=f"embedding_data/{EVALUATE_DATASET}/index.faiss",
@@ -45,7 +42,7 @@ def main():
         index_device="cuda",  # or cpu on Apple Metal
     )
 
-    dataset_file = "eval_data/2wiki_dev_processed_5.jsonl"
+    dataset_file = "eval_data/2wiki_complex_500.jsonl"
     gold_sets = []
     questions = []
     with jsonlines.open(dataset_file) as reader:
@@ -66,7 +63,7 @@ def main():
     # retrieve_result.passage is structured as: [hop_0, hop_1, ... hop_n]
     # Each hop is a list of lists: [query_0_passages, query_1_passages, ...]
 
-    K = 2  # Set your desired K value
+    K = 3
     num_queries = len(retrieve_result.passage[0])
     retrieved_sets = []
 

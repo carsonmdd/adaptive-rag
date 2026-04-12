@@ -53,12 +53,12 @@ def split_2wiki_by_complexity(base_url):
         hop_count = len(unique_titles)
         q_type = item.get("type", "").lower()
 
-        # Criteria: Simple (2-hop Bridge types)
-        if hop_count <= 2 and q_type in ["inference", "compositional"]:
+        # Criteria: Simple (2-hop comparison or inference)
+        if hop_count <= 2 and q_type in ["comparison", "inference"]:
             simple_data.append(item)
 
-        # Criteria: Complex (3+ hops OR Comparison types)
-        elif hop_count >= 3 or q_type in ["comparison", "bridge_comparison"]:
+        # Criteria: Complex (3+ hops OR compositional or bridge_comparison)
+        elif hop_count >= 3 or q_type in ["compositional", "bridge_comparison"]:
             complex_data.append(item)
 
     # Save outputs using the detected extension
