@@ -89,4 +89,6 @@ if __name__ == "__main__":
         n_limit = int(sys.argv[2]) if len(sys.argv) > 2 else None
         split_2wiki_by_complexity(target_dir, n_limit)
     else:
-        print("Usage: python script.py /home/path/to/data/ [optional_limit]")
+        print(
+            "Usage: python scripts/split_complexity.py /home/path/to/data/ [optional_limit]"
+        )
