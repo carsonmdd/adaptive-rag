@@ -63,7 +63,7 @@ def main():
     # retrieve_result.passage is structured as: [hop_0, hop_1, ... hop_n]
     # Each hop is a list of lists: [query_0_passages, query_1_passages, ...]
 
-    K = 3
+    K = 2
     num_queries = len(retrieve_result.passage[0])
     retrieved_sets = []
 
