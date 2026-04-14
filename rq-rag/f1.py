@@ -76,7 +76,7 @@ def main():
     avg_metrics = np.mean(all_metrics, axis=0)
 
     print(
-        f"Precision@{K}: {avg_metrics[0]:.4f}, Recall@{K}: {avg_metrics[1]:.4f}, F1: {avg_metrics[2]:.4f}, EM: {avg_metrics[3]}"
+        f"Precision@{K}: {avg_metrics[0]:.4f}, Recall@{K}: {avg_metrics[1]:.4f}, F1: {avg_metrics[2]:.4f}"
     )
 
 
