@@ -13,8 +13,8 @@ def run_treehop(query, gold_set):
     # load retriever
     retriever = MultiHopRetriever(
         "BAAI/bge-m3",
-        passages=f"embedding_data/{EVALUATE_DATASET}/eval_passages.jsonl",
-        passage_embeddings=f"embedding_data/{EVALUATE_DATASET}/eval_content_dense.npy",
+        passages=f"treehop/embedding_data/{EVALUATE_DATASET}/eval_passages.jsonl",
+        passage_embeddings=f"treehop/embedding_data/{EVALUATE_DATASET}/eval_content_dense.npy",
         # uncomment this if faiss index is initialized, resulting in a faster loading
         # faiss_index=f"embedding_data/{EVALUATE_DATASET}/index.faiss",
         tree_hop_model=tree_hop_model,
@@ -29,6 +29,8 @@ def run_treehop(query, gold_set):
         n_hop=2,
         top_n=5,
     )
+
+    print(retrieve_result)
 
     # Extract and flatten candidates from all hops for the first (and only) query
     all_candidates = []
@@ -64,6 +66,16 @@ def run_rq_rag(query, gold_set):
     pass
 
 
+def load_data(file_path):
+    with jsonlines.open(file_path) as reader:
+        return list(reader)
+
+
+def save_data(data, file_path):
+    with jsonlines.open(file_path, mode="w") as writer:
+        writer.write_all(data)
+
+
 def create_router_dataset(source_file, output_file, samples_needed=2000):
     dataset = load_data(source_file)
     random.seed(42)
@@ -89,4 +101,11 @@ def create_router_dataset(source_file, output_file, samples_needed=2000):
         if rq_recall >= 0.8:
             labeled_data.append({"text": query, "label": 1})  # Label 1 = RQ-RAG
 
-    save_jsonl(labeled_data, output_file)
+    save_data(labeled_data, output_file)
+
+
+if __name__ == "__main__":
+    run_treehop(
+        "Who is Thomas Lloyd-Mostyn's paternal grandfather?",
+        {"Thomas Lloyd-Mostyn", "Edward Lloyd-Mostyn, 2nd Baron Mostyn"},
+    )
