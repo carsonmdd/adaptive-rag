@@ -23,8 +23,8 @@ def compute_prf_metrics(retrieved_titles, gold_titles):
 
 
 def main():
-    RESULTS_PATH = "output/2wiki_simple_500/final_results.json"
-    INPUT_DATA_PATH = "data/2wiki/2wiki_simple_500.json"
+    RESULTS_PATH = "output/2wiki_complex_500/final_results.json"
+    INPUT_DATA_PATH = "data/2wiki/2wiki_complex_500.json"
 
     K = 2
 
