@@ -29,7 +29,7 @@ if __name__ == "__main__":
         if dataset_type == "train":
             file_path = f"./train_data/{dataset_name}_train_processed.jsonl"
         elif dataset_type == "eval":
-            file_path = f"./eval_data/{dataset_name}_1.jsonl"
+            file_path = f"./eval_data/{dataset_name}_dev_processed.jsonl"
 
         df_dataset = pd.read_json(file_path, lines=True, orient="records")
 
