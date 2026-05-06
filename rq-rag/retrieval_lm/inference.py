@@ -253,7 +253,8 @@ def generate_tree_of_thoughts(
         for current_path in final_outputs:
             pred += current_path["final_answer"] + "\n"
     else:
-        pred = final_outputs[0]["final_answer"] if final_outputs else ""
+        answers = [p["final_answer"] for p in final_outputs if p.get("final_answer")]
+        pred = Counter(answers).most_common(1)[0][0] if answers else ""
 
     # support the same api, view it as batch encoding
     return [pred], [final_outputs]

@@ -1,3 +1,5 @@
+import json
+
 from pipeline import AdaptiveRAGPipeline, RQRAGPipeline
 from tree_hop import TreeHopModel
 from passage_retrieval import MultiHopRetriever
@@ -15,17 +17,22 @@ retriever = MultiHopRetriever(
     index_device="cuda",
 )
 
+EVAL_FILE = "rq-rag/data/2wiki/dev_5.json"
+
 pipeline = AdaptiveRAGPipeline(
     router_path="rag_router/2wiki-type-classifier-final",
     treehop_retriever=retriever,
     reader=Reader(OpenAIModel()),
-    rqrag_pipeline=RQRAGPipeline("zorowin123/rq_rag_llama2_7B"),
+    rqrag_pipeline=RQRAGPipeline("zorowin123/rq_rag_llama2_7B", input_file=EVAL_FILE),
 )
 
-print(
-    pipeline.answer("Which film came out first, Blind Shaft or The Mask Of Fu Manchu?")
-)
-# --> {"type": "comparison", "path": "treehop", "answer": "The Mask Of Fu Manchu"}
+with open(EVAL_FILE) as f:
+    questions = json.load(f)
 
-print(pipeline.answer("Who is the mother of the director of Polish-Russian War?"))
-# --> {"type": "compositional", "path": "rqrag", "answer": "Małgorzata Braunek"}
+for i, q in enumerate(questions):
+    result = pipeline.answer(q["question"], context=q["context"], question_idx=i)
+    correct = result["answer"].strip().lower() == q["answer"].strip().lower()
+    print(f"[{result['type']:20s} → {result['path']:7s}] {'✓' if correct else '✗'}  Q: {q['question']}")
+    print(f"   predicted: {result['answer']}")
+    print(f"   expected:  {q['answer']}")
+    print()

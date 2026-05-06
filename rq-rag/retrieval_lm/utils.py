@@ -8,7 +8,7 @@ system_prompt = {
     "popqa_longtail_w_gs": "Please answer the question.",
     "openbookqa": "Given four answer candidates, A, B, C and D, choose the best answer choice.",
     "hotpotqa": "Given a question that requires multi-hop reasoning, you need to decompose the question and answer based on the given context. Please provide a short and concise response.",
-    "2wikimultihopqa":"Given a question that requires multi-hop reasoning, you need to decompose the question and answer based on the given context. Please provide a short and concise response.",
+    "2wikimultihopqa": "Given a question that requires multi-hop reasoning, you need to decompose the question and answer based on the given context. Please provide a short and concise response.",
     "musique": "Given a question that requires multi-hop reasoning, you need to decompose the question and answer based on the given context. Please provide a short and concise response.",
 }
 
@@ -21,7 +21,9 @@ def preprocess_single_data(user_query, tokenizer, previous_history=""):
     return [user_query]
 
 
-def preprocess_multi_turn_inference_data(user_query, previous_history, tokenizer, task, turn, retrieve_type):
+def preprocess_multi_turn_inference_data(
+    user_query, previous_history, tokenizer, task, turn, retrieve_type
+):
 
     # apparently multi_turn inference is hard to support batch decoding.
 
@@ -32,7 +34,13 @@ def preprocess_multi_turn_inference_data(user_query, previous_history, tokenizer
         else:
             eval_example = ""
             previous_history += "\n"
-        eval_example += previous_history + "<|user|>\n" + user_query[turn] + tokenizer.eos_token + "\n"
+        eval_example += (
+            previous_history
+            + "<|user|>\n"
+            + user_query[turn]
+            + tokenizer.eos_token
+            + "\n"
+        )
 
         if retrieve_type == "always":
             eval_example += "<|assistant|>\n[S_Rewritten_Query]"
@@ -51,12 +59,30 @@ def preprocess_eval_data(row, tokenizer, task):
     eval_examples = []
 
     for cur in row:
-        if task in ["popqa_longtail_w_gs", "popqa_longtail_w_gs_may_refers_to", "2wikimultihopqa"]:
-            eval_example = f"<s><|system|>\n{system_prompt[task]}" + tokenizer.eos_token + "\n<|user|>\n" + cur["question"] + tokenizer.eos_token + "\n"
+        if task in [
+            "popqa_longtail_w_gs",
+            "popqa_longtail_w_gs_may_refers_to",
+            "2wikimultihopqa",
+        ]:
+            eval_example = (
+                f"<s><|system|>\n{system_prompt[task]}"
+                + tokenizer.eos_token
+                + "\n<|user|>\n"
+                + cur["question"]
+                + tokenizer.eos_token
+                + "\n"
+            )
             eval_example += "<|assistant|>\n"
 
         elif task in ["hotpotqa", "musique"]:
-            eval_example = f"<s><|system|>\n{system_prompt[task]}" + tokenizer.eos_token + "\n<|user|>\n" + cur["question_text"] + tokenizer.eos_token + "\n"
+            eval_example = (
+                f"<s><|system|>\n{system_prompt[task]}"
+                + tokenizer.eos_token
+                + "\n<|user|>\n"
+                + cur["question_text"]
+                + tokenizer.eos_token
+                + "\n"
+            )
             eval_example += "<|assistant|>\n"
 
         elif task == "arc_challenge":
@@ -84,9 +110,18 @@ def preprocess_eval_data(row, tokenizer, task):
                     print(cur["choices"]["label"][option_index])
                     continue
 
-                user_query += "{0}: {1}\n".format(label_dict[cur["choices"]["label"][option_index]], option_text)
+                user_query += "{0}: {1}\n".format(
+                    label_dict[cur["choices"]["label"][option_index]], option_text
+                )
 
-            eval_example = f"<s><|system|>\n{system_prompt[task]}" + tokenizer.eos_token + "\n<|user|>\n" + user_query + tokenizer.eos_token + "\n"
+            eval_example = (
+                f"<s><|system|>\n{system_prompt[task]}"
+                + tokenizer.eos_token
+                + "\n<|user|>\n"
+                + user_query
+                + tokenizer.eos_token
+                + "\n"
+            )
             eval_example += "<|assistant|>\n"
 
         elif task == "openbookqa":
@@ -115,9 +150,18 @@ def preprocess_eval_data(row, tokenizer, task):
                     print(cur["choices"]["label"][option_index])
                     continue
 
-                user_query += "{0}: {1}\n".format(label_dict[cur["choices"]["label"][option_index]], option_text)
+                user_query += "{0}: {1}\n".format(
+                    label_dict[cur["choices"]["label"][option_index]], option_text
+                )
 
-            eval_example = f"<s><|system|>\n{system_prompt[task]}" + tokenizer.eos_token + "\n<|user|>\n" + user_query + tokenizer.eos_token + "\n"
+            eval_example = (
+                f"<s><|system|>\n{system_prompt[task]}"
+                + tokenizer.eos_token
+                + "\n<|user|>\n"
+                + user_query
+                + tokenizer.eos_token
+                + "\n"
+            )
             eval_example += "<|assistant|>\n"
 
         else:
@@ -140,12 +184,12 @@ def load_sag_special_tokens(tokenizer):
 
 def fix_spacing(input_text):
     # Add a space after periods that lack whitespace
-    output_text = re.sub(r'(?<=\w)([.!?])(?=\w)', r'\1 ', input_text)
+    output_text = re.sub(r"(?<=\w)([.!?])(?=\w)", r"\1 ", input_text)
     return output_text
 
 
 def load_jsonlines(file):
-    with jsonlines.open(file, 'r') as jsonl_f:
+    with jsonlines.open(file, "r") as jsonl_f:
         lst = [obj for obj in jsonl_f]
     return lst
 
@@ -159,5 +203,5 @@ def load_file(input_fp):
 
 
 def save_file_jsonl(data, fp):
-    with jsonlines.open(fp, mode='w') as writer:
+    with jsonlines.open(fp, mode="w") as writer:
         writer.write_all(data)

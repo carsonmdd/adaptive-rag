@@ -30,7 +30,7 @@ sys.path.insert(0, _rqrag)
 sys.path.insert(0, _rqrag_lm)
 from utils import load_sag_special_tokens, preprocess_eval_data
 from inference import generate_tree_of_thoughts
-from data_curation.tools.bm25_candidates import BM25Run
+from data_curation.tools.openai_embedding_search import OpenAIEmbedSearch
 
 import torch
 from argparse import Namespace
@@ -42,6 +42,23 @@ from transformers import (
 
 TREEHOP_LABELS = {"comparison", "inference"}
 RQRAG_LABELS = {"compositional", "bridge_comparison"}
+
+
+def _normalize_context(context: list) -> list:
+    """Convert 2wiki [title, sentences] pairs to {"title", "paragraph_text"} dicts."""
+    if not context:
+        return []
+    if isinstance(context[0], dict):
+        return context
+    return [
+        {
+            "title": item[0],
+            "paragraph_text": (
+                " ".join(item[1]) if isinstance(item[1], list) else item[1]
+            ),
+        }
+        for item in context
+    ]
 
 
 class RouterClassifier:
@@ -64,6 +81,7 @@ class RQRAGPipeline:
     def __init__(
         self,
         model_name_or_path: str,
+        input_file: str,
         ndocs: int = 3,
         max_depth: int = 2,
         task: str = "2wikimultihopqa",
@@ -85,10 +103,10 @@ class RQRAGPipeline:
         ]
         self.model.generation_config.max_new_tokens = 100
 
-        self.search_engine = BM25Run(ndocs)
         self.args = Namespace(
             task=task,
-            search_engine_type="bm25_candidates",
+            input_file=input_file,
+            search_engine_type="openai_embed",
             expand_on_tokens=[
                 "[S_Rewritten_Query]",
                 "[S_Decomposed_Query]",
@@ -97,9 +115,14 @@ class RQRAGPipeline:
             ],
             oracle=False,
         )
+        self.search_engine = OpenAIEmbedSearch(ndocs, task=task, args=self.args)
 
-    def answer(self, question: str, context: list = None) -> str:
-        row = {"question": question, "context": context or [], "answers": []}
+    def answer(self, question: str, context: list = None, question_idx: int = 0) -> str:
+        row = {
+            "question": question,
+            "context": _normalize_context(context),
+            "answers": [],
+        }
         eval_data = preprocess_eval_data(
             [row], tokenizer=self.tokenizer, task=self.task
         )
@@ -114,7 +137,7 @@ class RQRAGPipeline:
             search_engine_api=self.search_engine,
             search_limit=1,
             args=self.args,
-            index=0,
+            index=question_idx,
             total_corpus=None,
         )
         return preds[0].strip()
@@ -137,7 +160,9 @@ class AdaptiveRAGPipeline:
         self.n_hop = n_hop
         self.top_n = top_n
 
-    def answer(self, question: str, context: list = None) -> dict:
+    def answer(
+        self, question: str, context: list = None, question_idx: int = 0
+    ) -> dict:
         label = self.router.classify(question)
 
         if label in TREEHOP_LABELS:
@@ -152,7 +177,9 @@ class AdaptiveRAGPipeline:
                     f"Question type '{label}' routes to RQ-RAG but no rqrag_pipeline "
                     "was provided. Pass an RQRAGPipeline instance to AdaptiveRAGPipeline."
                 )
-            ans = self.rqrag.answer(question, context=context)
+            ans = self.rqrag.answer(
+                question, context=context, question_idx=question_idx
+            )
             path = "rqrag"
 
         return {"question": question, "type": label, "path": path, "answer": ans}
