@@ -83,7 +83,7 @@ class RQRAGPipeline:
         model_name_or_path: str,
         input_file: str,
         ndocs: int = 3,
-        max_depth: int = 3,
+        max_depth: int = 2,
         task: str = "2wikimultihopqa",
     ):
         self.task = task
