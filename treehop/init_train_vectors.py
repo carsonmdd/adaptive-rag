@@ -1,5 +1,6 @@
 import os
 import glob
+import argparse
 import torch
 import pickle
 import jsonlines
@@ -21,15 +22,26 @@ lst_vectorize = [("2wiki", "eval")]
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input_file", default=None, help="Override input JSONL file")
+    parser.add_argument("--output_dir", default=None, help="Override output embedding directory")
+    args = parser.parse_args()
+
     model = BGEM3FlagModel(
         "BAAI/bge-m3", use_fp16=False, normalize_embeddings=True, device=DEVICE
     )
 
     for dataset_name, dataset_type in lst_vectorize:
-        if dataset_type == "train":
+        if args.input_file:
+            file_path = args.input_file
+            dataset_name = os.path.splitext(os.path.basename(file_path))[0]
+        elif dataset_type == "train":
             file_path = f"./train_data/{dataset_name}_train_processed.jsonl"
         elif dataset_type == "eval":
             file_path = f"./eval_data/{dataset_name}_dev_processed.jsonl"
+
+        out_dir = args.output_dir or f"embedding_data/{dataset_name}"
+        os.makedirs(out_dir, exist_ok=True)
 
         df_dataset = pd.read_json(file_path, lines=True, orient="records")
 
@@ -66,7 +78,7 @@ if __name__ == "__main__":
             getattr(torch, DEVICE).empty_cache()
 
             np.save(
-                f"embedding_data/{dataset_name}/{dataset_type}_dense{i}.npy",
+                os.path.join(out_dir, f"{dataset_type}_dense{i}.npy"),
                 embeddings["dense_vecs"],
             )
             # lst_embeddings.append(embeddings)
@@ -74,36 +86,30 @@ if __name__ == "__main__":
         import glob
 
         input_paths = glob.glob(
-            f"embedding_data/{dataset_name}/{dataset_type}_dense[0-9]*.npy"
+            os.path.join(out_dir, f"{dataset_type}_dense[0-9]*.npy")
         )
         input_paths = sorted(
             input_paths, key=lambda path: int(path.split("_dense")[1].rstrip(".npy"))
         )
         lst_embeddings = []
         for path in input_paths:
-            if not path.startswith(
-                f"embedding_data/{dataset_name}/{dataset_type}_dense"
-            ) or not path.endswith(".npy"):
+            if not path.endswith(".npy"):
                 continue
 
             lst_embeddings.append(np.load(path))
 
         all_embeddings = np.concatenate(lst_embeddings, axis=0)
 
-        os.makedirs(f"embedding_data/{dataset_name}", exist_ok=True)
-
         np.save(
-            f"embedding_data/{dataset_name}/{dataset_type}_dense.npy", all_embeddings
+            os.path.join(out_dir, f"{dataset_type}_dense.npy"), all_embeddings
         )
         np.save(
-            f"embedding_data/{dataset_name}/{dataset_type}_content_dense.npy",
+            os.path.join(out_dir, f"{dataset_type}_content_dense.npy"),
             all_embeddings[-len(lst_ctx) :],
         )
 
         for path in input_paths:
-            if path.startswith(
-                f"embedding_data/{dataset_name}/{dataset_type}_dense"
-            ) or not path.endswith(".npy"):
+            if path.endswith(".npy"):
                 os.remove(path)
 
         # with open(f"embedding_data/{dataset_name}/{dataset_type}_sparse.pkl", "wb") as f:
@@ -124,8 +130,6 @@ if __name__ == "__main__":
             for i, k in enumerate(d_ctxs.keys())
         ]
 
-        dataset_path = os.path.join(
-            "embedding_data", dataset_name, f"{dataset_type}_passages.jsonl"
-        )
+        dataset_path = os.path.join(out_dir, f"{dataset_type}_passages.jsonl")
         with jsonlines.open(dataset_path, "w") as f:
             f.write_all(d_ctx_idx)

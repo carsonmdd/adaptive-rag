@@ -31,8 +31,9 @@ class OpenAIEmbedSearch:
 
             else:
 
+                stem = os.path.splitext(os.path.basename(self.args.input_file))[0]
                 embeddings_path = os.path.join(
-                    os.path.dirname(self.args.input_file), "test_context_embeddings.pt"
+                    os.path.dirname(self.args.input_file), f"{stem}_embeddings.pt"
                 )
                 self.all_embeddings = torch.load(embeddings_path)
 

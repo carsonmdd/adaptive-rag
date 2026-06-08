@@ -1,0 +1,54 @@
+{
+  "system": "rqrag",
+  "data_file": "rq-rag/data/2wiki/2wiki_complex_500.json",
+  "n": 3,
+  "overall_f1": 0.9629629629629629,
+  "avg_latency": 229.7436099330031,
+  "by_type": {
+    "bridge_comparison": {
+      "f1": 1.0,
+      "avg_latency": 146.17323173399927,
+      "n": 1
+    },
+    "compositional": {
+      "f1": 0.9444444444444444,
+      "avg_latency": 271.52879903250505,
+      "n": 2
+    }
+  },
+  "records": [
+    {
+      "idx": 0,
+      "id": "ad193b1808b411ebbd88ac1f6bf848b6",
+      "type": "bridge_comparison",
+      "question": "Which film has the director who died earlier, Max And Helen or Held Einer Nacht?",
+      "gold": "Held Einer Nacht",
+      "pred": "Held einer Nacht",
+      "route": "rqrag",
+      "f1": 1.0,
+      "latency": 146.17323173399927
+    },
+    {
+      "idx": 1,
+      "id": "c5ffa16a0bdb11eba7f7acde48001122",
+      "type": "compositional",
+      "question": "Where was the place of death of the director of film The Ages Of Lulu?",
+      "gold": "La Riera de Gai\u00e0",
+      "pred": "la Riera de Gai\u00e0, Catalonia",
+      "route": "rqrag",
+      "f1": 0.888888888888889,
+      "latency": 199.99750424200465
+    },
+    {
+      "idx": 2,
+      "id": "5c9ef1d80bdd11eba7f7acde48001122",
+      "type": "compositional",
+      "question": "What nationality is Isabelle Coutant-Peyre's husband?",
+      "gold": "Venezuelan",
+      "pred": "Venezuelan",
+      "route": "rqrag",
+      "f1": 1.0,
+      "latency": 343.06009382300545
+    }
+  ]
+}
