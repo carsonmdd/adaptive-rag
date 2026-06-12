@@ -173,7 +173,10 @@ def generate_tree_of_thoughts(
             if special_token != "[A_Response]":
                 # when not generating the final answer, we adjust the temp to increase diversity
                 outputs = model.generate(
-                    **inputs, return_dict_in_generate=True, temperature=1.0
+                    **inputs,
+                    return_dict_in_generate=True,
+                    do_sample=True,
+                    temperature=1.0,
                 )
             else:
                 outputs = model.generate(

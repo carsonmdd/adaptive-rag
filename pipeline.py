@@ -40,8 +40,8 @@ from transformers import (
     AutoModelForSequenceClassification,
 )
 
-TREEHOP_LABELS = {"comparison", "inference"}
-RQRAG_LABELS = {"compositional", "bridge_comparison"}
+TREEHOP_LABELS = {"comparison", "inference", "bridge_comparison"}
+RQRAG_LABELS = {"compositional"}
 
 
 def _normalize_context(context: list) -> list:
