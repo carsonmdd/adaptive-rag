@@ -40,8 +40,8 @@ from transformers import (
     AutoModelForSequenceClassification,
 )
 
-TREEHOP_LABELS = {"comparison", "inference", "bridge_comparison"}
-RQRAG_LABELS = {"compositional"}
+TREEHOP_LABELS = {"inference", "compositional"}
+RQRAG_LABELS = {"comparison", "bridge_comparison"}
 
 
 def _normalize_context(context: list) -> list:
@@ -85,9 +85,11 @@ class RQRAGPipeline:
         ndocs: int = 3,
         max_depth: int = 2,
         task: str = "2wikimultihopqa",
+        global_corpus: bool = True,
     ):
         self.task = task
         self.max_depth = max_depth
+        self.global_corpus = global_corpus
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_name_or_path, padding_side="left"
@@ -115,7 +117,9 @@ class RQRAGPipeline:
             ],
             oracle=False,
         )
-        self.search_engine = OpenAIEmbedSearch(ndocs, task=task, args=self.args)
+        self.search_engine = OpenAIEmbedSearch(
+            ndocs, task=task, args=self.args, global_corpus=global_corpus
+        )
 
     def answer(self, question: str, context: list = None, question_idx: int = 0) -> str:
         row = {
@@ -137,7 +141,7 @@ class RQRAGPipeline:
             search_engine_api=self.search_engine,
             search_limit=1,
             args=self.args,
-            index=question_idx,
+            index=None if self.global_corpus else question_idx,
             total_corpus=None,
         )
         return preds[0].strip()

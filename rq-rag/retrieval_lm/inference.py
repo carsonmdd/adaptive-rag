@@ -175,7 +175,7 @@ def generate_tree_of_thoughts(
                 outputs = model.generate(
                     **inputs,
                     return_dict_in_generate=True,
-                    do_sample=True,
+                    do_sample=False,
                     temperature=1.0,
                 )
             else:
@@ -256,8 +256,25 @@ def generate_tree_of_thoughts(
         for current_path in final_outputs:
             pred += current_path["final_answer"] + "\n"
     else:
-        answers = [p["final_answer"] for p in final_outputs if p.get("final_answer")]
-        pred = Counter(answers).most_common(1)[0][0] if answers else ""
+        # Realistic single-answer selection. The tree emits an [A_Response] leaf at
+        # every depth, including depth 0 (no retrieval) and intermediate depths that
+        # have resolved only the first hop. A flat majority vote over all leaves lets
+        # these under-hopped answers (which return the bridge/subject entity instead
+        # of the final target) outvote the correct fully-hopped answers, since the
+        # latter are sampled at temperature=1.0 and split across spellings. So we
+        # restrict the vote to the most-hopped leaves: drop parametric (0-retrieval)
+        # guesses, keep the leaves that took the most retrieval hops, and vote there.
+        candidates = [p for p in final_outputs if p.get("final_answer")]
+        grounded = [p for p in candidates if p.get("retrieved_index")]
+        pool = grounded or candidates
+        if pool:
+            max_hops = max(len(p["retrieved_index"]) for p in pool)
+            deepest = [
+                p["final_answer"] for p in pool if len(p["retrieved_index"]) == max_hops
+            ]
+            pred = Counter(deepest).most_common(1)[0][0]
+        else:
+            pred = ""
 
     # support the same api, view it as batch encoding
     return [pred], [final_outputs]

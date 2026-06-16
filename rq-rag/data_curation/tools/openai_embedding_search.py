@@ -1,3 +1,4 @@
+import json
 import os
 from dotenv import load_dotenv
 import faiss
@@ -13,11 +14,21 @@ load_dotenv()
 
 
 class OpenAIEmbedSearch:
-    def __init__(self, ndocs, task, args, use_calculated_embeds=True, is_train=False):
+    def __init__(
+        self,
+        ndocs,
+        task,
+        args,
+        use_calculated_embeds=True,
+        is_train=False,
+        global_corpus=False,
+    ):
         self.ndocs = ndocs
         self.task = task
         self.args = args
         self.client = OpenAI()
+        self.global_corpus = global_corpus
+        self.corpus = None
 
         # set the question embedding save path and retrieval results save path
         if use_calculated_embeds:
@@ -37,7 +48,42 @@ class OpenAIEmbedSearch:
                 )
                 self.all_embeddings = torch.load(embeddings_path)
 
+                if self.global_corpus:
+                    self._build_global_corpus()
+
+    def _build_global_corpus(self):
+        """Flatten the per-question [n_questions, n_ctx, dim] embeddings into one
+        deduplicated [n_passages, dim] corpus shared by every query.
+
+        Embedding row (q, c) corresponds to question q's context c in the input
+        file, in order — the same order generate_embeddings_sag.py embedded them.
+        Padding rows (questions with fewer than n_ctx contexts) are skipped by
+        walking each question's actual context list.
+        """
+        with open(self.args.input_file) as f:
+            items = json.load(f)
+
+        seen = {}
+        corpus, rows = [], []
+        for q_idx, item in enumerate(items):
+            for c_idx, (title, sentences) in enumerate(item["context"]):
+                text = " ".join(sentences) if isinstance(sentences, list) else sentences
+                key = (title, text)
+                if key in seen:
+                    continue
+                seen[key] = len(corpus)
+                corpus.append({"title": title, "paragraph_text": text})
+                rows.append(self.all_embeddings[q_idx, c_idx])
+
+        self.corpus = corpus
+        self.all_embeddings = torch.stack(rows)
+
     def __call__(self, query: str, corpus: list, index: int = None):
+
+        if self.global_corpus:
+            # search the whole deduplicated corpus, not the question's own contexts
+            corpus = self.corpus
+            index = None
 
         # get the normalized text and embedding
 
@@ -125,13 +171,9 @@ class OpenAIEmbedSearch:
         else:
             cur_context_embeddings = self.all_embeddings
 
-        similarities = [
-            self.cosine_similarity(query_embedding, context_embedding)
-            for context_embedding in cur_context_embeddings
-        ]
+        emb = cur_context_embeddings.float()
+        query = query_embedding.float()
+        similarities = (emb @ query) / (emb.norm(dim=1) * query.norm() + 1e-10)
 
-        most_similar_index = sorted(
-            range(len(similarities)), key=lambda i: similarities[i], reverse=True
-        )[: self.ndocs]
-
-        return most_similar_index
+        k = min(self.ndocs, similarities.shape[0])
+        return torch.topk(similarities, k).indices.tolist()
