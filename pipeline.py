@@ -2,8 +2,8 @@
 Adaptive RAG pipeline.
 
 Routes questions to TreeHop+Reader (fast) or RQ-RAG (accurate) based on type:
-  comparison, inference       → TreeHop + LLM reader
-  compositional, bridge_comparison → RQ-RAG (fine-tuned Llama)
+  inference, compositional       → TreeHop + LLM reader
+  comparison, bridge_comparison → RQ-RAG (fine-tuned Llama)
 """
 
 import os
